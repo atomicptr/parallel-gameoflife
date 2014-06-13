@@ -10,6 +10,12 @@
 
 namespace utils {
 
+    struct point_t {
+        int x;
+        int y;
+        bool state;
+    };
+
     std::vector<std::string> get_lines(std::string);
     std::vector<std::string> get_lines(std::ifstream&);
     std::vector<std::string> split(std::string, char);
