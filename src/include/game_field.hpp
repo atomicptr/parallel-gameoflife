@@ -15,14 +15,18 @@ public:
     void set(int, int, bool);
     int neighbors(int, int);
 
+    int width();
+    int height();
+
     void print();
 
 private:
     void init(std::vector<std::string>);
 
     std::vector<bool> field;
-    int width;
-    int height;
+    
+    int _width;
+    int _height;
 };
 
 #endif
