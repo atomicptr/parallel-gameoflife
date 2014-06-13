@@ -13,6 +13,7 @@ public:
 
     bool get(int, int);
     void set(int, int, bool);
+    int neighbors(int, int);
 
     void print();
 

@@ -35,6 +35,26 @@ void game_field::set(int x, int y, bool value) {
     this->field[this->width * y + x] = value;
 }
 
+int game_field::neighbors(int x, int y) {
+    int neighbor_counter = 0;
+
+    // for every neighbor
+    for(int j = y - 1; j <= y + 1; j++) {
+        for(int i = x - 1; i <= x + 1; i++) {
+
+            if(i >= 0 && j >= 0 && i < this->width && j < this->height && !(i == x && j == y)) {
+
+                // if neighbor is alive
+                if(get(i, j)) {
+                    neighbor_counter++;
+                }
+            }
+        }
+    }
+
+    return neighbor_counter;
+}
+
 void game_field::print() {
     int counter = 0;
 

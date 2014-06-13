@@ -13,8 +13,12 @@ int main() {
 
     game_field field(input_file);
 
+    field.set(2, 2, true);
+    field.set(3, 3, true);
+    field.set(1, 1, true);
     field.set(0, 0, true);
-    field.set(4, 4, true);
+
+    cout << field.neighbors(2, 2) << endl;
 
     field.print();
 

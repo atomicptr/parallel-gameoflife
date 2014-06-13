@@ -1,6 +1,7 @@
 *.make
 Makefile
 obj
+gameoflife
 
 # Created by http://www.gitignore.io
 
