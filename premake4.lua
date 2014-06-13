@@ -6,6 +6,8 @@ solution "opentp"
         "src/include"
     }
 
+    buildoptions "-std=c++11 -stdlib=libc++"
+
     project "gameoflife"
         kind "ConsoleApp"
 
