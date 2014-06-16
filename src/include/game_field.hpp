@@ -3,6 +3,8 @@
 
 #include <vector>
 #include <string>
+#include <algorithm>
+#include <iterator>
 #include <utils.hpp>
 
 class game_field {
@@ -10,6 +12,7 @@ class game_field {
 public:
     game_field(std::string);
     game_field(std::vector<std::string>);
+    game_field(game_field*);
 
     bool get(int, int);
     void set(int, int, bool);
@@ -24,7 +27,8 @@ private:
     void init(std::vector<std::string>);
 
     std::vector<bool> field;
-    
+    std::vector<std::string> lines;
+
     int _width;
     int _height;
 };

@@ -12,7 +12,16 @@ game_field::game_field(vector<string> lines) {
     this->init(lines);
 }
 
+game_field::game_field(game_field *other) {
+    this->_width = other->_width;
+    this->_height = other->_height;
+
+    copy(other->field.begin(), other->field.end(), back_inserter(this->field));
+}
+
 void game_field::init(vector<string> lines) {
+    this->lines = lines;
+
     auto size = utils::get_size(lines);
 
     this->_width = size[0];
