@@ -1,7 +1,9 @@
 #include <iostream>
 #include <string>
+#include <cmath>
 
 #include <pthread.h>
+#include <semaphore.h>
 
 #include <utils.hpp>
 #include <game_field.hpp>
@@ -14,47 +16,65 @@ struct thread_params {
     game_field *next;
     int start;
     int end;
+    sem_t *semaphore;
 };
 
-pthread_mutex_t mtx;
+void* do_step(void*);
 
-void* do_step(void*);//game_field*, game_field*, int, int);
+sem_t semaphore;
 
 int main() {
     int number_of_generations = 1;
     string input_file = "input_file.txt";
-    int number_of_threads = 1;
+    int number_of_threads = 3;
 
     game_field *field = new game_field(input_file);
     game_field *next;
 
-    vector<pthread_mutex_t> mutex;
+    const int height = field->height();
 
-    int height = field->height();
+    int step = ceil((float)height / number_of_threads);
+
+    int actual_thread_number = height < number_of_threads ? height : number_of_threads;
+
+    sem_init(&semaphore, 0, actual_thread_number);
 
     for(int i = 0; i < number_of_generations; i++) {
         next = new game_field(field);
 
-        // TODO: create threads
-        struct thread_params params;
+        int tmp = height;
+        int start_num = 0;
+        int factor = -1;
 
-        params.current = field;
-        params.next = next;
-        params.start = 0;
-        params.end = height;
+        while(tmp > 0) {
+            if(tmp <= step) {
+                step = tmp;
+                factor = 0;
+            }
 
-        pthread_t thread;
+            sem_post(&semaphore);
 
-        pthread_create(&thread, NULL, do_step, &params);
-        // END TODO: create threads
-        //do_step(&params);
+            struct thread_params params;
 
-        pthread_join(thread, NULL);
+            params.current = field;
+            params.next = next;
+            params.start = start_num;
+            params.end = start_num + step + factor;
+            params.semaphore = &semaphore;
 
-        pthread_mutex_lock(&mtx);
+            pthread_t thread;
+
+            cout << "chuck" << endl;
+            pthread_create(&thread, NULL, do_step, &params);
+
+            tmp -= step;
+            start_num += step;
+        }
+
+        sem_wait(&semaphore);
+        cout << "nope" << endl;
         delete field;
         field = next;
-        pthread_mutex_unlock(&mtx);
     }
 
     field->print();
@@ -65,13 +85,12 @@ int main() {
 }
 
 void* do_step(void *context) {
-    pthread_mutex_lock(&mtx);
     struct thread_params *params = static_cast<thread_params*>(context);
 
     game_field *field = params->current;
     game_field *next = params->next;
 
-    for(int y = 0; y < field->height(); y++) {
+    for(int y = params->start; y <= params->end; y++) {
         for(int x = 0; x < field->width(); x++) {
             bool alive = field->get(x, y);
             int neighbors = field->neighbors(x, y);
@@ -87,6 +106,5 @@ void* do_step(void *context) {
             }
         }
     }
-
-    pthread_mutex_unlock(&mtx);
+    cout << "testa" << endl;
 }
