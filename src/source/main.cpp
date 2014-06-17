@@ -45,9 +45,11 @@ int main() {
 
         pthread_t thread;
 
-        pthread_mutex_lock(&mtx);
         pthread_create(&thread, NULL, do_step, &params);
         // END TODO: create threads
+        //do_step(&params);
+
+        pthread_join(thread, NULL);
 
         pthread_mutex_lock(&mtx);
         delete field;
@@ -63,12 +65,13 @@ int main() {
 }
 
 void* do_step(void *context) {
+    pthread_mutex_lock(&mtx);
     struct thread_params *params = static_cast<thread_params*>(context);
 
     game_field *field = params->current;
     game_field *next = params->next;
 
-    for(int y = params->start; y < params->end; y++) {
+    for(int y = 0; y < field->height(); y++) {
         for(int x = 0; x < field->width(); x++) {
             bool alive = field->get(x, y);
             int neighbors = field->neighbors(x, y);
