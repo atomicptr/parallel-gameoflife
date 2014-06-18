@@ -22,12 +22,12 @@ struct thread_params {
 void* do_step(void*);
 
 sem_t *semaphore;
-string sema_name = "semaphore-parallel-gol-123";
+string sema_name = "semaphore-parallel-gol-123456";
 
 int main() {
     int number_of_generations = 1;
     string input_file = "input_file.txt";
-    int number_of_threads = 2;
+    int number_of_threads = 19;
 
     game_field *field = new game_field(input_file);
     game_field *next;
@@ -45,6 +45,8 @@ int main() {
         exit(1);
     }
 
+    vector<thread_params> params;
+
     for(int i = 0; i < number_of_generations; i++) {
         next = new game_field(field);
 
@@ -60,18 +62,19 @@ int main() {
 
             sem_wait(semaphore);
 
-            struct thread_params params;
+            thread_params parameter;
 
-            params.current = field;
-            params.next = next;
-            params.start = start_num;
-            params.end = start_num + step + factor;
-            params.semaphore = semaphore;
+            parameter.current = field;
+            parameter.next = next;
+            parameter.start = start_num;
+            parameter.end = start_num + step + factor;
+            parameter.semaphore = semaphore;
+
+            params.push_back(parameter);
 
             pthread_t thread;
 
-            cout << "chuck" << endl;
-            pthread_create(&thread, NULL, do_step, &params);
+            pthread_create(&thread, NULL, do_step, &params.back());
 
             tmp -= step;
             start_num += step;
@@ -81,7 +84,6 @@ int main() {
             sem_wait(semaphore);
         }
 
-        cout << "nope" << endl;
         delete field;
         field = next;
     }
@@ -119,6 +121,7 @@ void* do_step(void *context) {
         }
     }
 
-    cout << "testa" << endl;
     sem_post(params->semaphore);
+
+    return nullptr;
 }
