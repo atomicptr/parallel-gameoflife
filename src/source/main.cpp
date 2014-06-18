@@ -21,12 +21,13 @@ struct thread_params {
 
 void* do_step(void*);
 
-sem_t semaphore;
+sem_t *semaphore;
+string sema_name = "semaphore-parallel-gol-123";
 
 int main() {
     int number_of_generations = 1;
     string input_file = "input_file.txt";
-    int number_of_threads = 3;
+    int number_of_threads = 2;
 
     game_field *field = new game_field(input_file);
     game_field *next;
@@ -37,7 +38,12 @@ int main() {
 
     int actual_thread_number = height < number_of_threads ? height : number_of_threads;
 
-    sem_init(&semaphore, 0, actual_thread_number);
+    semaphore = sem_open(sema_name.c_str(), O_CREAT, 0644, actual_thread_number);
+
+    if(semaphore == SEM_FAILED) {
+        cerr << "ERR: Couldn't create semaphore" << endl;
+        exit(1);
+    }
 
     for(int i = 0; i < number_of_generations; i++) {
         next = new game_field(field);
@@ -52,7 +58,7 @@ int main() {
                 factor = 0;
             }
 
-            sem_post(&semaphore);
+            sem_wait(semaphore);
 
             struct thread_params params;
 
@@ -60,7 +66,7 @@ int main() {
             params.next = next;
             params.start = start_num;
             params.end = start_num + step + factor;
-            params.semaphore = &semaphore;
+            params.semaphore = semaphore;
 
             pthread_t thread;
 
@@ -71,7 +77,10 @@ int main() {
             start_num += step;
         }
 
-        sem_wait(&semaphore);
+        for(int j = 0; j < actual_thread_number; j++) {
+            sem_wait(semaphore);
+        }
+
         cout << "nope" << endl;
         delete field;
         field = next;
@@ -80,6 +89,9 @@ int main() {
     field->print();
 
     delete field;
+
+    sem_close(semaphore);
+    sem_unlink(sema_name.c_str());
 
     return 0;
 }
@@ -106,5 +118,7 @@ void* do_step(void *context) {
             }
         }
     }
+
     cout << "testa" << endl;
+    sem_post(params->semaphore);
 }
