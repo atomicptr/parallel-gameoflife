@@ -22,10 +22,10 @@ struct thread_params {
 void* do_step(void*);
 
 sem_t *semaphore;
-string sema_name = "semaphore-parallel-gol-123456";
+string sema_name = "semaphore-parallel-gol-1337.";
 
 int main() {
-    int number_of_generations = 1;
+    int number_of_generations = 100;
     string input_file = "input_file.txt";
     int number_of_threads = 19;
 
@@ -80,12 +80,18 @@ int main() {
             start_num += step;
         }
 
+        // get semaphores
         for(int j = 0; j < actual_thread_number; j++) {
             sem_wait(semaphore);
         }
 
         delete field;
         field = next;
+
+        // free semaphores
+        for(int j = 0; j < actual_thread_number; j++) {
+            sem_post(semaphore);
+        }
     }
 
     field->print();
