@@ -92,6 +92,9 @@ int main() {
         for(int j = 0; j < actual_thread_number; j++) {
             sem_post(semaphore);
         }
+
+        // delete params
+        params.clear();
     }
 
     field->print();
