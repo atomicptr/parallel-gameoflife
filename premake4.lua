@@ -8,6 +8,9 @@ solution "opentp"
 
     buildoptions "-std=c++11 -stdlib=libc++"
 
+    configuration "debug"
+        flags { "Symbols" }
+
     project "gameoflife"
         kind "ConsoleApp"
 
