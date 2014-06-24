@@ -16,13 +16,11 @@ struct thread_params {
     game_field *next;
     int start;
     int end;
-    sem_t *semaphore;
 };
 
 void* do_step(void*);
 
-sem_t *semaphore;
-string sema_name = "semaphore-parallel-gol-1337.";
+sem_t semaphore;
 
 int main() {
     int number_of_generations = 100;
@@ -38,14 +36,14 @@ int main() {
 
     int actual_thread_number = height < number_of_threads ? height : number_of_threads;
 
-    semaphore = sem_open(sema_name.c_str(), O_CREAT, 0644, actual_thread_number);
+    int error = sem_init(&semaphore, 0, actual_thread_number);
 
-    if(semaphore == SEM_FAILED) {
+    if(error) {
         cerr << "ERR: Couldn't create semaphore" << endl;
         exit(1);
     }
 
-    vector<thread_params> params;
+    vector<thread_params*> params;
 
     for(int i = 0; i < number_of_generations; i++) {
         next = new game_field(field);
@@ -60,15 +58,14 @@ int main() {
                 factor = 0;
             }
 
-            sem_wait(semaphore);
+            sem_wait(&semaphore);
 
-            thread_params parameter;
+            thread_params *parameter = new thread_params;
 
-            parameter.current = field;
-            parameter.next = next;
-            parameter.start = start_num;
-            parameter.end = start_num + step + factor;
-            parameter.semaphore = semaphore;
+            parameter->current = field;
+            parameter->next = next;
+            parameter->start = start_num;
+            parameter->end = start_num + step + factor;
 
             params.push_back(parameter);
 
@@ -82,7 +79,7 @@ int main() {
 
         // get semaphores
         for(int j = 0; j < actual_thread_number; j++) {
-            sem_wait(semaphore);
+            sem_wait(&semaphore);
         }
 
         delete field;
@@ -90,10 +87,14 @@ int main() {
 
         // free semaphores
         for(int j = 0; j < actual_thread_number; j++) {
-            sem_post(semaphore);
+            sem_post(&semaphore);
         }
 
         // delete params
+        for_each(params.begin(), params.end(), [](thread_params *p) {
+            delete p;
+        });
+
         params.clear();
     }
 
@@ -101,8 +102,7 @@ int main() {
 
     delete field;
 
-    sem_close(semaphore);
-    sem_unlink(sema_name.c_str());
+    sem_destroy(&semaphore);
 
     return 0;
 }
@@ -113,8 +113,10 @@ void* do_step(void *context) {
     game_field *field = params->current;
     game_field *next = params->next;
 
+    const int width = field->width();
+
     for(int y = params->start; y <= params->end; y++) {
-        for(int x = 0; x < field->width(); x++) {
+        for(int x = 0; x < width; x++) {
             bool alive = field->get(x, y);
             int neighbors = field->neighbors(x, y);
 
@@ -130,7 +132,7 @@ void* do_step(void *context) {
         }
     }
 
-    sem_post(params->semaphore);
+    sem_post(&semaphore);
 
     return nullptr;
 }
