@@ -1,6 +1,8 @@
 #include <iostream>
 #include <string>
 #include <cmath>
+#include <queue>
+#include <mutex>
 
 #include <pthread.h>
 #include <semaphore.h>
@@ -11,16 +13,21 @@
 using namespace std;
 using namespace utils;
 
-struct thread_params {
+struct job {
     game_field *current;
     game_field *next;
     int start;
     int end;
 };
 
-void* do_step(void*);
+void* start_worker(void*);
 
 sem_t semaphore;
+mutex job_mutex;
+
+queue<job*> job_queue;
+
+bool is_running = true;
 
 int main() {
     int number_of_generations = 100;
@@ -43,7 +50,13 @@ int main() {
         exit(1);
     }
 
-    vector<thread_params*> params;
+    vector<pthread_t*> threads;
+
+    for(int i = 0; i < actual_thread_number; i++) {
+        threads.push_back(new pthread_t);
+
+        pthread_create(threads.back(), NULL, start_worker, NULL);
+    }
 
     for(int i = 0; i < number_of_generations; i++) {
         next = new game_field(field);
@@ -58,20 +71,14 @@ int main() {
                 factor = 0;
             }
 
-            sem_wait(&semaphore);
+            job *j = new job;
 
-            thread_params *parameter = new thread_params;
+            j->current = field;
+            j->next = next;
+            j->start = start_num;
+            j->end = start_num + step;
 
-            parameter->current = field;
-            parameter->next = next;
-            parameter->start = start_num;
-            parameter->end = start_num + step + factor;
-
-            params.push_back(parameter);
-
-            pthread_t thread;
-
-            pthread_create(&thread, NULL, do_step, &params.back());
+            job_queue.push(j);
 
             tmp -= step;
             start_num += step;
@@ -89,50 +96,75 @@ int main() {
         for(int j = 0; j < actual_thread_number; j++) {
             sem_post(&semaphore);
         }
-
-        // delete params
-        for_each(params.begin(), params.end(), [](thread_params *p) {
-            delete p;
-        });
-
-        params.clear();
     }
 
     field->print();
 
     delete field;
 
+    is_running = false;
+
+    // delete threads
+    for_each(threads.begin(), threads.end(), [](pthread_t *thread) {
+        pthread_join(*thread, NULL);
+
+        delete thread;
+    });
+
     sem_destroy(&semaphore);
 
     return 0;
 }
 
-void* do_step(void *context) {
-    struct thread_params *params = static_cast<thread_params*>(context);
+mutex fancy;
+void* start_worker(void *context) {
+    while(is_running) {
+        job *j = nullptr;
 
-    game_field *field = params->current;
-    game_field *next = params->next;
+        // try to get a job
+        job_mutex.lock();
+        if(job_queue.size() > 0) {
+            j = job_queue.front();
+            job_queue.pop();
+        }
+        job_mutex.unlock();
 
-    const int width = field->width();
+        if(j != nullptr) {
+            game_field *field = j->current;
+            game_field *next = j->next;
 
-    for(int y = params->start; y <= params->end; y++) {
-        for(int x = 0; x < width; x++) {
-            bool alive = field->get(x, y);
-            int neighbors = field->neighbors(x, y);
+            fancy.lock();
+            cout << "field ptr: " << field << endl;
+            cout << "size: " << field->field.size() << endl;
+            fancy.unlock();
 
-            if(alive && neighbors < 2) {
-                next->set(x, y, false);
-            } else if(alive && neighbors > 3) {
-                next->set(x, y, false);
-            } else if(alive && (neighbors == 2 || neighbors == 3)) {
-                // do nothing
-            } else if(!alive && neighbors == 3) {
-                next->set(x, y, true);
+            const int width = field->width();
+            const int start = j->start;
+            const int end = j->end;
+
+            for(int y = start; y <= end; y++) {
+                for(int x = 0; x < width; x++) {
+                    bool alive = field->get(x, y);
+                    int neighbors = field->neighbors(x, y);
+
+                    if(alive && neighbors < 2) {
+                        next->set(x, y, false);
+                    } else if(alive && neighbors > 3) {
+                        next->set(x, y, false);
+                    } else if(alive && (neighbors == 2 || neighbors == 3)) {
+                        // do nothing
+                    } else if(!alive && neighbors == 3) {
+                        next->set(x, y, true);
+                    }
+                }
             }
+
+            // job done
+            delete j;
+
+            sem_post(&semaphore);
         }
     }
-
-    sem_post(&semaphore);
 
     return nullptr;
 }

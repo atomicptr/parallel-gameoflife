@@ -20,8 +20,6 @@ game_field::game_field(game_field *other) {
 }
 
 void game_field::init(vector<string> lines) {
-    this->lines = lines;
-
     auto size = utils::get_size(lines);
 
     this->_width = size[0];

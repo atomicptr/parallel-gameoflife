@@ -22,12 +22,9 @@ public:
     int height();
 
     void print();
-
+std::vector<bool> field;
 private:
     void init(std::vector<std::string>);
-
-    std::vector<bool> field;
-    std::vector<std::string> lines;
 
     int _width;
     int _height;
