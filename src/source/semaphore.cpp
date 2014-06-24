@@ -13,13 +13,13 @@ void semaphore::wait() {
     }
 }
 
-void semaphore::acquire() {
+void semaphore::increment() {
     mtx.lock();
     this->counter++;
     mtx.unlock();
 }
 
-void semaphore::free() {
+void semaphore::decrement() {
     mtx.lock();
     this->counter--;
     mtx.unlock();

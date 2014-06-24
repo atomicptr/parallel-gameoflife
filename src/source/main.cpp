@@ -3,6 +3,7 @@
 #include <cmath>
 #include <queue>
 #include <mutex>
+#include <chrono>
 
 #include <pthread.h>
 
@@ -21,6 +22,7 @@ struct job {
 };
 
 void* start_worker(void*);
+float get_average(vector<float>);
 
 mutex job_mutex;
 mutex counter_mutex;
@@ -31,10 +33,12 @@ queue<job*> job_queue;
 bool is_running = true;
 
 int main() {
+    // start parameters
     int number_of_generations = 100;
     string input_file = "input_file.txt";
     int number_of_threads = 19;
 
+    // create fields
     game_field *field = new game_field(input_file);
     game_field *next;
 
@@ -46,13 +50,21 @@ int main() {
 
     vector<pthread_t*> threads;
 
+    // start threads
     for(int i = 0; i < actual_thread_number; i++) {
         threads.push_back(new pthread_t);
 
         pthread_create(threads.back(), NULL, start_worker, NULL);
     }
 
+    vector<float> time_per_generation;
+    chrono::time_point<chrono::system_clock> start, end;
+
+    // calc generations
     for(int i = 0; i < number_of_generations; i++) {
+        // get start time
+        start = chrono::system_clock::now();
+
         next = new game_field(*field);
 
         int tmp = height;
@@ -72,7 +84,7 @@ int main() {
             j->start = start_num;
             j->end = start_num + step;
 
-            sema.acquire();
+            sema.increment();
 
             job_mutex.lock();
             job_queue.push(j);
@@ -82,15 +94,27 @@ int main() {
             start_num += step;
         }
 
+        // wait for threads to complete all jobs
         sema.wait();
 
         delete field;
         field = next;
+
+        // get end time
+        end = chrono::system_clock::now();
+
+        // calculate ms this generation took
+        chrono::duration<float> elapsed_seconds = end - start;
+
+        time_per_generation.push_back(elapsed_seconds.count() * 1000);
     }
 
+    // print final field
     field->print();
 
     delete field;
+
+    cout << "avg. time per generation: " << get_average(time_per_generation) << "ms" << endl;
 
     is_running = false;
 
@@ -141,12 +165,22 @@ void* start_worker(void *context) {
                 }
             }
 
-            // job done
+            // job is done, yay
             delete j;
 
-            sema.free();
+            sema.decrement();
         }
     }
 
     return nullptr;
+}
+
+float get_average(vector<float> v) {
+    float avg = 0.0;
+
+    for_each(v.begin(), v.end(), [&](float f) {
+        avg += f;
+    });
+
+    return avg / v.size();
 }

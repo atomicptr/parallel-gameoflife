@@ -9,8 +9,8 @@ public:
     semaphore(unsigned int);
 
     void wait();
-    void acquire();
-    void free();
+    void increment();
+    void decrement();
 
 private:
     unsigned int counter;
