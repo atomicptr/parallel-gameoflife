@@ -26,9 +26,12 @@ float get_average(vector<float>);
 
 mutex job_mutex;
 mutex counter_mutex;
+mutex cell_time_mutex;
 
 semaphore sema;
 queue<job*> job_queue;
+
+vector<float> time_per_cell;
 
 bool is_running = true;
 
@@ -37,6 +40,8 @@ int main() {
     int number_of_generations = 100;
     string input_file = "input_file.txt";
     int number_of_threads = 19;
+
+    chrono::time_point<chrono::system_clock> start_time = chrono::system_clock::now();
 
     // create fields
     game_field *field = new game_field(input_file);
@@ -58,12 +63,12 @@ int main() {
     }
 
     vector<float> time_per_generation;
-    chrono::time_point<chrono::system_clock> start, end;
+    chrono::time_point<chrono::system_clock> generation_start_time;
 
     // calc generations
     for(int i = 0; i < number_of_generations; i++) {
         // get start time
-        start = chrono::system_clock::now();
+        generation_start_time = chrono::system_clock::now();
 
         next = new game_field(*field);
 
@@ -100,13 +105,10 @@ int main() {
         delete field;
         field = next;
 
-        // get end time
-        end = chrono::system_clock::now();
-
         // calculate ms this generation took
-        chrono::duration<float> elapsed_seconds = end - start;
+        chrono::duration<float> generation_elapsed_seconds = chrono::system_clock::now() - generation_start_time;
 
-        time_per_generation.push_back(elapsed_seconds.count() * 1000);
+        time_per_generation.push_back(generation_elapsed_seconds.count() * 1000);
     }
 
     // print final field
@@ -115,6 +117,13 @@ int main() {
     delete field;
 
     cout << "avg. time per generation: " << get_average(time_per_generation) << "ms" << endl;
+
+    cout << "avg. time per cell: " << get_average(time_per_cell) << "ms" << endl;
+
+    // calc execution time
+    chrono::duration<float> elapsed_time_s = chrono::system_clock::now() - start_time;
+
+    cout << "total execution time: " << elapsed_time_s.count() * 1000 << "ms" << endl;
 
     is_running = false;
 
@@ -141,6 +150,8 @@ void* start_worker(void *context) {
         job_mutex.unlock();
 
         if(j != nullptr) {
+            chrono::time_point<chrono::system_clock> cell_start_time = chrono::system_clock::now();
+
             game_field *field = j->current;
             game_field *next = j->next;
 
@@ -169,6 +180,13 @@ void* start_worker(void *context) {
             delete j;
 
             sema.decrement();
+
+            // calculate ms this generation took
+            chrono::duration<float> cell_elapsed_seconds = chrono::system_clock::now() - cell_start_time;
+
+            cell_time_mutex.lock();
+            time_per_cell.push_back(cell_elapsed_seconds.count() * 1000);
+            cell_time_mutex.unlock();
         }
     }
 
