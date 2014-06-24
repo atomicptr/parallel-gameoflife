@@ -116,12 +116,19 @@ int main() {
 
     delete field;
 
+    // calc execution time
+    chrono::duration<float> elapsed_time_s = chrono::system_clock::now() - start_time;
+
+    float generations_per_second = time_per_generation.size() / elapsed_time_s.count();
+    float cells_per_second = time_per_cell.size() / elapsed_time_s.count();
+
     cout << "avg. time per generation: " << get_average(time_per_generation) << "ms" << endl;
 
     cout << "avg. time per cell: " << get_average(time_per_cell) << "ms" << endl;
 
-    // calc execution time
-    chrono::duration<float> elapsed_time_s = chrono::system_clock::now() - start_time;
+    cout << "generations per second: " << generations_per_second << endl;
+
+    cout << "cells per second: " << cells_per_second << endl;
 
     cout << "total execution time: " << elapsed_time_s.count() * 1000 << "ms" << endl;
 
