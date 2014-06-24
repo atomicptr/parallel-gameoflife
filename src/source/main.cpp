@@ -5,7 +5,6 @@
 #include <mutex>
 
 #include <pthread.h>
-#include <semaphore.h>
 
 #include <utils.hpp>
 #include <game_field.hpp>
@@ -22,9 +21,10 @@ struct job {
 
 void* start_worker(void*);
 
-sem_t semaphore;
 mutex job_mutex;
+mutex counter_mutex;
 
+int counter;
 queue<job*> job_queue;
 
 bool is_running = true;
@@ -43,13 +43,6 @@ int main() {
 
     int actual_thread_number = height < number_of_threads ? height : number_of_threads;
 
-    int error = sem_init(&semaphore, 0, actual_thread_number);
-
-    if(error) {
-        cerr << "ERR: Couldn't create semaphore" << endl;
-        exit(1);
-    }
-
     vector<pthread_t*> threads;
 
     for(int i = 0; i < actual_thread_number; i++) {
@@ -59,7 +52,7 @@ int main() {
     }
 
     for(int i = 0; i < number_of_generations; i++) {
-        next = new game_field(field);
+        next = new game_field(*field);
 
         int tmp = height;
         int start_num = 0;
@@ -78,24 +71,22 @@ int main() {
             j->start = start_num;
             j->end = start_num + step;
 
+            counter_mutex.lock();
+            counter++;
+            counter_mutex.unlock();
+
+            job_mutex.lock();
             job_queue.push(j);
+            job_mutex.unlock();
 
             tmp -= step;
             start_num += step;
         }
 
-        // get semaphores
-        for(int j = 0; j < actual_thread_number; j++) {
-            sem_wait(&semaphore);
-        }
+        while(counter != 0) {}
 
         delete field;
         field = next;
-
-        // free semaphores
-        for(int j = 0; j < actual_thread_number; j++) {
-            sem_post(&semaphore);
-        }
     }
 
     field->print();
@@ -111,12 +102,9 @@ int main() {
         delete thread;
     });
 
-    sem_destroy(&semaphore);
-
     return 0;
 }
 
-mutex fancy;
 void* start_worker(void *context) {
     while(is_running) {
         job *j = nullptr;
@@ -132,11 +120,6 @@ void* start_worker(void *context) {
         if(j != nullptr) {
             game_field *field = j->current;
             game_field *next = j->next;
-
-            fancy.lock();
-            cout << "field ptr: " << field << endl;
-            cout << "size: " << field->field.size() << endl;
-            fancy.unlock();
 
             const int width = field->width();
             const int start = j->start;
@@ -162,7 +145,9 @@ void* start_worker(void *context) {
             // job done
             delete j;
 
-            sem_post(&semaphore);
+            counter_mutex.lock();
+            counter--;
+            counter_mutex.unlock();
         }
     }
 

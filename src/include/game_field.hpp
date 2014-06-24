@@ -12,7 +12,7 @@ class game_field {
 public:
     game_field(std::string);
     game_field(std::vector<std::string>);
-    game_field(game_field*);
+    game_field(const game_field&);
 
     bool get(int, int);
     void set(int, int, bool);
