@@ -8,6 +8,7 @@
 
 #include <utils.hpp>
 #include <game_field.hpp>
+#include <semaphore.hpp>
 
 using namespace std;
 using namespace utils;
@@ -24,7 +25,7 @@ void* start_worker(void*);
 mutex job_mutex;
 mutex counter_mutex;
 
-int counter;
+semaphore sema;
 queue<job*> job_queue;
 
 bool is_running = true;
@@ -71,9 +72,7 @@ int main() {
             j->start = start_num;
             j->end = start_num + step;
 
-            counter_mutex.lock();
-            counter++;
-            counter_mutex.unlock();
+            sema.acquire();
 
             job_mutex.lock();
             job_queue.push(j);
@@ -83,7 +82,7 @@ int main() {
             start_num += step;
         }
 
-        while(counter != 0) {}
+        sema.wait();
 
         delete field;
         field = next;
@@ -145,9 +144,7 @@ void* start_worker(void *context) {
             // job done
             delete j;
 
-            counter_mutex.lock();
-            counter--;
-            counter_mutex.unlock();
+            sema.free();
         }
     }
 
