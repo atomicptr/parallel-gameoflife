@@ -25,6 +25,7 @@ struct job {
 void run(int, string, int);
 void* start_worker(void*);
 float get_average(vector<float>);
+void add_benchmark_result(int, float, float, float, float, float);
 
 mutex job_mutex;
 mutex counter_mutex;
@@ -151,18 +152,21 @@ void run(int number_of_generations, string input_file, int number_of_threads) {
     // calc execution time
     chrono::duration<float> elapsed_time_s = chrono::system_clock::now() - start_time;
 
+    float avg_time_per_gen = get_average(time_per_generation);
+    float avg_time_per_cell = get_average(time_per_cell);
     float generations_per_second = time_per_generation.size() / elapsed_time_s.count();
     float cells_per_second = time_per_cell.size() / elapsed_time_s.count();
+    float total_execution_time = elapsed_time_s.count() * 1000;
 
-    cout << "avg. time per generation: " << get_average(time_per_generation) << "ms" << endl;
+    cout << "avg. time per generation: " << avg_time_per_gen << "ms" << endl;
 
-    cout << "avg. time per cell: " << get_average(time_per_cell) << "ms" << endl;
+    cout << "avg. time per cell: " << avg_time_per_cell << "ms" << endl;
 
     cout << "generations per second: " << generations_per_second << endl;
 
     cout << "cells per second: " << cells_per_second << endl;
 
-    cout << "total execution time: " << elapsed_time_s.count() * 1000 << "ms" << endl;
+    cout << "total execution time: " << total_execution_time << "ms" << endl;
 
     is_running = false;
 
@@ -172,6 +176,9 @@ void run(int number_of_generations, string input_file, int number_of_threads) {
 
         delete thread;
     });
+
+    add_benchmark_result(number_of_threads, avg_time_per_gen, avg_time_per_cell,
+        generations_per_second, cells_per_second, total_execution_time);
 }
 
 void* start_worker(void *context) {
@@ -238,4 +245,26 @@ float get_average(vector<float> v) {
     });
 
     return avg / v.size();
+}
+
+void add_benchmark_result(int threads, float avg_time_gen, float avg_time_cell,
+        float gen_per_second, float cell_per_second, float total_time) {
+
+    ifstream ifile("results.csv");
+
+    bool file_exists = ifile.good();
+
+    ifile.close();
+
+    ofstream file("results.csv", ofstream::app | ofstream::out);
+
+    if(!file_exists) {
+        file << "number of threads, avg. time per generation, avg. time per cell, gen per second" <<
+            ", cell per second, total execution time" << endl;
+    }
+
+    file << threads << ", " << avg_time_gen << ", " << avg_time_cell << ", " << gen_per_second <<
+        ", " << cell_per_second << ", " << total_time << endl;
+
+    file.close();
 }
