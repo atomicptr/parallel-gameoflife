@@ -1,4 +1,4 @@
-solution "opentp"
+solution "gameoflife"
     configurations {"debug", "release"}
     language "C++"
 
