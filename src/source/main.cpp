@@ -145,7 +145,7 @@ void run(int number_of_generations, string input_file, int number_of_threads) {
     }
 
     // print final field
-    field->print();
+    //field->print();
 
     delete field;
 
