@@ -4,6 +4,7 @@
 #include <queue>
 #include <mutex>
 #include <chrono>
+#include <cstdlib>
 
 #include <pthread.h>
 
@@ -21,6 +22,7 @@ struct job {
     int end;
 };
 
+void run(int, string, int);
 void* start_worker(void*);
 float get_average(vector<float>);
 
@@ -35,12 +37,42 @@ vector<float> time_per_cell;
 
 bool is_running = true;
 
-int main() {
+int main(int argc, char **argv) {
     // start parameters
-    int number_of_generations = 100;
+    int number_of_generations = 1;
     string input_file = "input_file.txt";
-    int number_of_threads = 19;
+    int number_of_threads = 1;
 
+    // ./gameoflife filename.txt 100
+    if(argc == 3) {
+        input_file = argv[1];
+        number_of_generations = atoi(argv[2]);
+    // ./gameoflife filename.txt 100 20
+    } else if(argc == 4) {
+        input_file = argv[1];
+        number_of_generations = atoi(argv[2]);
+        number_of_threads = atoi(argv[3]);
+    } else {
+        cerr << "ERR: Please use command like this:" << endl << endl <<
+            "\t./gameoflife filename.txt number_of_generations [number_of_threads (optional)]" <<
+            endl << endl;
+        exit(1);
+    }
+
+    ifstream f(input_file.c_str());
+
+    if(f.good()) {
+        run(number_of_generations, input_file, number_of_threads);
+    } else {
+        cerr << "ERR: Couldn't find file: " << input_file << endl;
+    }
+
+    f.close();
+
+    return 0;
+}
+
+void run(int number_of_generations, string input_file, int number_of_threads) {
     chrono::time_point<chrono::system_clock> start_time = chrono::system_clock::now();
 
     // create fields
@@ -140,8 +172,6 @@ int main() {
 
         delete thread;
     });
-
-    return 0;
 }
 
 void* start_worker(void *context) {
