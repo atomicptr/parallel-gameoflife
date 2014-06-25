@@ -14,9 +14,9 @@ solution "opentp"
     project "gameoflife"
         kind "ConsoleApp"
 
-	links {
-	    "pthread"
-	}
+        links {
+            "pthread"
+        }
 
         files {
             "src/source/**.cpp"
